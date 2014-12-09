@@ -70,7 +70,7 @@ define(function(require) {
 
     if (!queryParams.access_token) {
       var url = OAUTH2_ENDPOINT +
-        '?scope=' + scope +
+        '?scope=' + scope.join(' ') +
         '&response_type=token'
         '&redirect_uri=' + window.location.href +
         '&client_id=' + config.clientID;
