@@ -2,7 +2,7 @@ define(function(require) {
 
   var $ = require('jquery');
 
-  var queryParams = function() {
+  var queryParams = (function() {
     // from https://developers.google.com/accounts/docs/OAuth2UserAgent
     var params = {}, queryString = window.location.hash.substring(1),
         regex = /([^&=]+)=([^&]*)/g, match;
@@ -12,7 +12,7 @@ define(function(require) {
       match = regex.exec(queryString);
     }
     return params;
-  }
+  })();
 
   //constructor dependency injection helper
   var ensure = function(dependencyNames, dependencies) {
