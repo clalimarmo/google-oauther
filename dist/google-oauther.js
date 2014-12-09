@@ -63,15 +63,13 @@ define(function(require) {
   };
 
   singleton.run = function(_config) {
-    ensure(['scope', 'clientID'], _config);
-
-    var config = _config;
+    var config = ensure(['scope', 'clientID'], _config);
     scope = [PROFILE_SCOPE].concat(config.scope);
 
     if (!queryParams.access_token) {
       var url = OAUTH2_ENDPOINT +
         '?scope=' + scope.join(' ') +
-        '&response_type=token'
+        '&response_type=token' +
         '&redirect_uri=' + window.location.href +
         '&client_id=' + config.clientID;
       window.open(url, 'oauth', 'top=200,left=200,height=400,width=600');
