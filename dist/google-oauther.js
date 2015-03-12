@@ -1,5 +1,7 @@
 define(function(require) {
 
+  var AUTH_TOKEN_KEY = 'google-oauther-auth-token';
+
   var $ = require('jquery');
 
   var queryParams = (function() {
@@ -33,16 +35,19 @@ define(function(require) {
   var PROFILE_ENDPOINT = 'https://www.googleapis.com/plus/v1/people/me';
   var PROFILE_SCOPE = 'profile';
 
-  var token;
   var user;
   var onAuthenticateCallbacks = [];
 
   var singleton = {};
   var scope;
 
+  var authToken = function() {
+    return window.localStorage.getItem(AUTH_TOKEN_KEY);
+  };
+
   var fetchUserInformation = function() {
     $.ajax({
-      url: PROFILE_ENDPOINT + '?access_token=' + token,
+      url: PROFILE_ENDPOINT + '?access_token=' + authToken(),
       success: function(data) {
         user = {
           id: data.id,
@@ -56,15 +61,14 @@ define(function(require) {
     });
   };
 
-  // callback for popup - save token and get user info
-  window.authenticatedWith = function(_token) {
-    token = _token;
-    fetchUserInformation();
-  };
-
   singleton.run = function(_config) {
     var config = ensure(['scope', 'clientID'], _config);
     scope = [PROFILE_SCOPE].concat(config.scope);
+
+    if (authToken()) {
+      fetchUserInformation();
+      return;
+    }
 
     if (!queryParams.access_token) {
       var url = OAUTH2_ENDPOINT +
@@ -72,15 +76,15 @@ define(function(require) {
         '&response_type=token' +
         '&redirect_uri=' + window.location.href +
         '&client_id=' + config.clientID;
-      window.open(url, 'oauth', 'top=200,left=200,height=400,width=600');
+      window.location = url;
     } else {
-      window.opener.authenticatedWith(queryParams.access_token);
-      window.close();
+      window.localStorage.setItem(AUTH_TOKEN_KEY, queryParams.access_token);
+      window.location = window.location.href.split('#')[0];
     }
   };
 
   singleton.isAuthenticated = function() {
-    return token !== undefined;
+    return authToken() !== undefined;
   };
 
   singleton.onAuthenticate = function(callback) {
@@ -88,7 +92,7 @@ define(function(require) {
   };
 
   singleton.token = function() {
-    return token;
+    return authToken();
   };
 
   singleton.user = function() {
