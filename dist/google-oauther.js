@@ -22,6 +22,7 @@ define(function(require) {
   var singleton = {};
   var scope;
   var config;
+  var reauthenticateBackoff = 1;
 
   singleton.run = function(_config) {
     ensureConfig(_config);
@@ -45,8 +46,11 @@ define(function(require) {
   };
 
   singleton.reauthenticate = function() {
-    clearAuthToken();
-    singleton.run();
+    setTimeout(function() {
+      clearAuthToken();
+      singleton.run();
+    }, reauthenticateBackoff);
+    increaseReauthenticateBackoff();
   };
 
   singleton.isAuthenticated = function() {
@@ -77,22 +81,6 @@ define(function(require) {
     return params;
   })();
 
-  //constructor dependency injection helper
-  var ensure = function(dependencyNames, dependencies) {
-    var onlyDependencies = {};
-    for (var i = 0; i < dependencyNames.length; i++) {
-      var expectedDependency = dependencyNames[i];
-      var injectedDependency = dependencies[expectedDependency];
-      if (injectedDependency === undefined || injectedDependency === null) {
-        throw new Error('missing dependency:' + expectedDependency);
-      } else {
-        onlyDependencies[expectedDependency] = injectedDependency;
-      }
-    }
-    return onlyDependencies;
-  };
-
-
   var authToken = function() {
     return window.localStorage.getItem(AUTH_TOKEN_KEY);
   };
@@ -113,6 +101,7 @@ define(function(require) {
         for (var i = 0; i < onAuthenticateCallbacks.length; i++) {
           onAuthenticateCallbacks[i](singleton);
         }
+        resetReauthenticateBackoff();
       },
       error: function(response) {
         if (RETRY_STATUS_CODES.indexOf(response.status) > -1) {
@@ -127,6 +116,29 @@ define(function(require) {
       config = ensure(['scope', 'clientID'], _config);
     }
     scope = [PROFILE_SCOPE].concat(config.scope);
+  };
+
+  //constructor dependency injection helper
+  var ensure = function(dependencyNames, dependencies) {
+    var onlyDependencies = {};
+    for (var i = 0; i < dependencyNames.length; i++) {
+      var expectedDependency = dependencyNames[i];
+      var injectedDependency = dependencies[expectedDependency];
+      if (injectedDependency === undefined || injectedDependency === null) {
+        throw new Error('missing dependency:' + expectedDependency);
+      } else {
+        onlyDependencies[expectedDependency] = injectedDependency;
+      }
+    }
+    return onlyDependencies;
+  };
+
+  var increaseReauthenticateBackoff = function() {
+    reauthenticateBackoff = reauthenticateBackoff * 2;
+  };
+
+  var resetReauthenticateBackoff = function() {
+    reauthenticateBackoff = 1;
   };
 
   return singleton;
