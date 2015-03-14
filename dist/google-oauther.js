@@ -24,11 +24,11 @@ define(function(require) {
   var config;
   var reauthenticateBackoff = 1;
 
-  singleton.run = function(_config) {
+  singleton.run = function(_config, done) {
     ensureConfig(_config);
 
     if (singleton.isAuthenticated()) {
-      fetchUserInformation();
+      fetchUserInformation(done);
       return;
     }
 
@@ -45,10 +45,10 @@ define(function(require) {
     }
   };
 
-  singleton.reauthenticate = function() {
+  singleton.reauthenticate = function(done) {
     setTimeout(function() {
       clearAuthToken();
-      singleton.run();
+      singleton.run(null, done);
     }, reauthenticateBackoff);
     increaseReauthenticateBackoff();
   };
@@ -89,7 +89,7 @@ define(function(require) {
     window.localStorage.removeItem(AUTH_TOKEN_KEY);
   };
 
-  var fetchUserInformation = function() {
+  var fetchUserInformation = function(done) {
     $.ajax({
       url: PROFILE_ENDPOINT + '?access_token=' + authToken(),
       success: function(data) {
@@ -100,6 +100,9 @@ define(function(require) {
         };
         for (var i = 0; i < onAuthenticateCallbacks.length; i++) {
           onAuthenticateCallbacks[i](singleton);
+        }
+        if (done instanceof Function) {
+          done();
         }
         resetReauthenticateBackoff();
       },
