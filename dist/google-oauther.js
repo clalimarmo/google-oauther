@@ -4,6 +4,67 @@ define(function(require) {
 
   var $ = require('jquery');
 
+  var OAUTH2_ENDPOINT = 'https://accounts.google.com/o/oauth2/auth';
+  var PROFILE_ENDPOINT = 'https://www.googleapis.com/plus/v1/people/me';
+  var PROFILE_SCOPE = 'profile';
+
+  var STATUS_CODE_UNAUTHORIZED = 401;
+  var STATUS_CODE_FORBIDDEN = 403;
+
+  var RETRY_STATUS_CODES = [
+    STATUS_CODE_UNAUTHORIZED,
+    STATUS_CODE_FORBIDDEN
+  ];
+
+  var user;
+  var onAuthenticateCallbacks = [];
+
+  var singleton = {};
+  var scope;
+  var config;
+
+  singleton.run = function(_config) {
+    ensureConfig(_config);
+
+    if (singleton.isAuthenticated()) {
+      fetchUserInformation();
+      return;
+    }
+
+    if (!queryParams.access_token) {
+      var url = OAUTH2_ENDPOINT +
+        '?scope=' + scope.join(' ') +
+        '&response_type=token' +
+        '&redirect_uri=' + window.location.href +
+        '&client_id=' + config.clientID;
+      window.location = url;
+    } else {
+      window.localStorage.setItem(AUTH_TOKEN_KEY, queryParams.access_token);
+      window.location = window.location.href.split('#')[0];
+    }
+  };
+
+  singleton.reauthenticate = function() {
+    clearAuthToken();
+    singleton.run();
+  };
+
+  singleton.isAuthenticated = function() {
+    return authToken() !== null;
+  };
+
+  singleton.onAuthenticate = function(callback) {
+    onAuthenticateCallbacks.push(callback);
+  };
+
+  singleton.token = function() {
+    return authToken();
+  };
+
+  singleton.user = function() {
+    return user;
+  };
+
   var queryParams = (function() {
     // from https://developers.google.com/accounts/docs/OAuth2UserAgent
     var params = {}, queryString = window.location.hash.substring(1),
@@ -31,18 +92,13 @@ define(function(require) {
     return onlyDependencies;
   };
 
-  var OAUTH2_ENDPOINT = 'https://accounts.google.com/o/oauth2/auth';
-  var PROFILE_ENDPOINT = 'https://www.googleapis.com/plus/v1/people/me';
-  var PROFILE_SCOPE = 'profile';
-
-  var user;
-  var onAuthenticateCallbacks = [];
-
-  var singleton = {};
-  var scope;
 
   var authToken = function() {
     return window.localStorage.getItem(AUTH_TOKEN_KEY);
+  };
+
+  var clearAuthToken = function() {
+    window.localStorage.removeItem(AUTH_TOKEN_KEY);
   };
 
   var fetchUserInformation = function() {
@@ -58,45 +114,19 @@ define(function(require) {
           onAuthenticateCallbacks[i](singleton);
         }
       },
+      error: function(response) {
+        if (RETRY_STATUS_CODES.indexOf(response.status) > -1) {
+          singleton.reauthenticate();
+        }
+      },
     });
   };
 
-  singleton.run = function(_config) {
-    var config = ensure(['scope', 'clientID'], _config);
+  var ensureConfig = function(_config) {
+    if (!config) {
+      config = ensure(['scope', 'clientID'], _config);
+    }
     scope = [PROFILE_SCOPE].concat(config.scope);
-
-    if (authToken()) {
-      fetchUserInformation();
-      return;
-    }
-
-    if (!queryParams.access_token) {
-      var url = OAUTH2_ENDPOINT +
-        '?scope=' + scope.join(' ') +
-        '&response_type=token' +
-        '&redirect_uri=' + window.location.href +
-        '&client_id=' + config.clientID;
-      window.location = url;
-    } else {
-      window.localStorage.setItem(AUTH_TOKEN_KEY, queryParams.access_token);
-      window.location = window.location.href.split('#')[0];
-    }
-  };
-
-  singleton.isAuthenticated = function() {
-    return authToken() !== undefined;
-  };
-
-  singleton.onAuthenticate = function(callback) {
-    onAuthenticateCallbacks.push(callback);
-  };
-
-  singleton.token = function() {
-    return authToken();
-  };
-
-  singleton.user = function() {
-    return user;
   };
 
   return singleton;
