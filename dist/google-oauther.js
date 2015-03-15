@@ -1,6 +1,7 @@
 define(function(require) {
 
   var AUTH_TOKEN_KEY = 'google-oauther-auth-token';
+  var AUTH_TOKEN_EXPIRATION_KEY = 'google-oauther-auth-expiration';
 
   var $ = require('jquery');
 
@@ -40,7 +41,7 @@ define(function(require) {
         '&client_id=' + config.clientID;
       window.location = url;
     } else {
-      window.localStorage.setItem(AUTH_TOKEN_KEY, queryParams.access_token);
+      setAuthToken(queryParams.access_token, queryParams.expires_in);
       window.location = window.location.href.split('#')[0];
     }
   };
@@ -65,6 +66,11 @@ define(function(require) {
     return authToken();
   };
 
+  singleton.tokenIsExpired = function() {
+    var expiration = parseInt(window.localStorage);
+    return expiration >= (new Date()).getTime();
+  };
+
   singleton.user = function() {
     return user;
   };
@@ -85,8 +91,16 @@ define(function(require) {
     return window.localStorage.getItem(AUTH_TOKEN_KEY);
   };
 
+  var setAuthToken = function(newToken, secondsBeforeExpiration) {
+    window.localStorage.setItem(AUTH_TOKEN_KEY, queryParams.access_token);
+
+    var expiration = (new Date()).getTime() + secondsBeforeExpiration * 1000;
+    window.localStorage.setItem(AUTH_TOKEN_EXPIRATION_KEY, expiration);
+  };
+
   var clearAuthToken = function() {
     window.localStorage.removeItem(AUTH_TOKEN_KEY);
+    window.localStorage.removeItem(AUTH_TOKEN_EXPIRATION_KEY);
   };
 
   var fetchUserInformation = function(done) {
