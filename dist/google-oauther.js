@@ -67,8 +67,8 @@ define(function(require) {
   };
 
   singleton.tokenIsExpired = function() {
-    var expiration = parseInt(window.localStorage);
-    return expiration >= (new Date()).getTime();
+    var expiration = parseInt(window.localStorage.getItem(AUTH_TOKEN_EXPIRATION_KEY));
+    return (new Date()).getTime() >= expiration;
   };
 
   singleton.user = function() {
