@@ -39,6 +39,14 @@ https://www.googleapis.com/plus/v1/people/me
 
 Returns the auth token. Useful for subsequent requests to other Google APIs.
 
+### reauthenticate
+
+Does the same thing as run.
+
+### tokenIsExpired
+
+Indicates whether the token is expired or not.
+
 ## Notes
 
 The authenticator always requests the 'profile' OAuth2 scope, in addition to
