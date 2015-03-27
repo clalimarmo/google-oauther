@@ -15,8 +15,23 @@ auth token returned by Google.
 
     authenticator.run({
       scope: ['https://www.googleapis.com/auth/devstorage.read_write'],
-      clientID: 'your-google-oauth2-client-id'
+      clientID: 'your-google-oauth2-client-id',
+      tokenExpirationBuffer: 60000
     });
+
+## Configuration
+
+Required:
+
+  * *scope* - the permissions to request from google
+  * *clientID* - your google oauth2 client id
+
+Optional:
+
+  * *tokenExpirationBuffer* - number of milliseconds before the token actually expires,
+    after which the authenticator will consider the token expired. Useful for getting a
+    token, or preventing users from attempting unauthenticated requests, before the
+    token expires.
 
 ## Methods
 

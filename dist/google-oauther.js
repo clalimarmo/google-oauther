@@ -5,6 +5,9 @@ define(function(require) {
 
   var $ = require('jquery');
 
+  // consider the token expired 1 minute before it actually is, by default
+  var DEFAULT_TOKEN_EXPIRATION_BUFFER = 60 * 1000;
+
   var OAUTH2_ENDPOINT = 'https://accounts.google.com/o/oauth2/auth';
   var PROFILE_ENDPOINT = 'https://www.googleapis.com/plus/v1/people/me';
   var PROFILE_SCOPE = 'profile';
@@ -67,7 +70,8 @@ define(function(require) {
   };
 
   singleton.tokenIsExpired = function() {
-    var expiration = parseInt(window.localStorage.getItem(AUTH_TOKEN_EXPIRATION_KEY));
+    var expirationBuffer = config.tokenExpirationBuffer || DEFAULT_TOKEN_EXPIRATION_BUFFER;
+    var expiration = parseInt(window.localStorage.getItem(AUTH_TOKEN_EXPIRATION_KEY)) - expirationBuffer;
     return (new Date()).getTime() >= expiration;
   };
 
