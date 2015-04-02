@@ -58,7 +58,7 @@ define(function(require) {
   };
 
   singleton.isAuthenticated = function() {
-    return authToken() !== null;
+    return authToken() !== null && !singleton.tokenIsExpired();
   };
 
   singleton.onAuthenticate = function(callback) {
