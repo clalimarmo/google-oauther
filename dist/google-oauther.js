@@ -27,6 +27,7 @@ define(function(require) {
   var scope;
   var config;
   var reauthenticateBackoff = 1;
+  var queryParams = getQueryParams();
 
   singleton.run = function(_config, done) {
     ensureConfig(_config);
@@ -40,12 +41,27 @@ define(function(require) {
       var url = OAUTH2_ENDPOINT +
         '?scope=' + scope.join(' ') +
         '&response_type=token' +
-        '&redirect_uri=' + window.location.href +
+        '&redirect_uri=' + window.location.href.split('#')[0] +
         '&client_id=' + config.clientID;
+
+      if (locationHash().length > 0) {
+        url += '&state=' +
+          '{"locationHash":"' + locationHash() + '"}';
+      }
+
       window.location = url;
     } else {
       setAuthToken(queryParams.access_token, queryParams.expires_in);
-      window.location = window.location.href.split('#')[0];
+      var state;
+      if (queryParams.state) {
+        state = JSON.parse(queryParams.state);
+      }
+      var stateLocationHash = '';
+      if (state && state.locationHash) {
+        stateLocationHash = state.locationHash;
+      }
+      window.location = window.location.href.split('#')[0] + '#' + stateLocationHash;
+      window.location.reload();
     }
   };
 
@@ -79,35 +95,27 @@ define(function(require) {
     return user;
   };
 
-  var queryParams = (function() {
-    // from https://developers.google.com/accounts/docs/OAuth2UserAgent
-    var params = {}, queryString = window.location.hash.substring(1),
-        regex = /([^&=]+)=([^&]*)/g, match;
-    match = regex.exec(queryString);
-    while (match) {
-      params[decodeURIComponent(match[1])] = decodeURIComponent(match[2]);
-      match = regex.exec(queryString);
-    }
-    return params;
-  })();
-
-  var authToken = function() {
+  function authToken() {
     return window.localStorage.getItem(AUTH_TOKEN_KEY);
   };
 
-  var setAuthToken = function(newToken, secondsBeforeExpiration) {
+  function setAuthToken(newToken, secondsBeforeExpiration) {
     window.localStorage.setItem(AUTH_TOKEN_KEY, queryParams.access_token);
 
     var expiration = (new Date()).getTime() + secondsBeforeExpiration * 1000;
     window.localStorage.setItem(AUTH_TOKEN_EXPIRATION_KEY, expiration);
   };
 
-  var clearAuthToken = function() {
+  function clearAuthToken() {
     window.localStorage.removeItem(AUTH_TOKEN_KEY);
     window.localStorage.removeItem(AUTH_TOKEN_EXPIRATION_KEY);
   };
 
-  var fetchUserInformation = function(done) {
+  function locationHash() {
+    return window.location.hash.replace('#', '') || '';
+  };
+
+  function fetchUserInformation(done) {
     $.ajax({
       url: PROFILE_ENDPOINT + '?access_token=' + authToken(),
       success: function(data) {
@@ -132,7 +140,7 @@ define(function(require) {
     });
   };
 
-  var ensureConfig = function(_config) {
+  function ensureConfig(_config) {
     if (!config) {
       config = ensure(['scope', 'clientID'], _config);
     }
@@ -140,7 +148,7 @@ define(function(require) {
   };
 
   //constructor dependency injection helper
-  var ensure = function(dependencyNames, dependencies) {
+  function ensure(dependencyNames, dependencies) {
     var onlyDependencies = {};
     for (var i = 0; i < dependencyNames.length; i++) {
       var expectedDependency = dependencyNames[i];
@@ -154,12 +162,24 @@ define(function(require) {
     return onlyDependencies;
   };
 
-  var increaseReauthenticateBackoff = function() {
+  function increaseReauthenticateBackoff() {
     reauthenticateBackoff = reauthenticateBackoff * 2;
   };
 
-  var resetReauthenticateBackoff = function() {
+  function resetReauthenticateBackoff() {
     reauthenticateBackoff = 1;
+  }
+
+  function getQueryParams() {
+    // from https://developers.google.com/accounts/docs/OAuth2UserAgent
+    var params = {}, queryString = window.location.hash.substring(1),
+    regex = /([^&=]+)=([^&]*)/g, match;
+    match = regex.exec(queryString);
+    while (match) {
+      params[decodeURIComponent(match[1])] = decodeURIComponent(match[2]);
+      match = regex.exec(queryString);
+    }
+    return params;
   };
 
   return singleton;
